@@ -54,7 +54,8 @@ EPSSOURCES_FROM_FIG := $(FIGSOURCES:%.fig=%.eps)
 
 SVGSOURCES_ALL := $(wildcard */*.svg)
 SVG_EMERGENCY := $(wildcard */*.svg*.svg)
-SVGSOURCES := $(filter-out $(SVG_EMERGENCY),$(SVGSOURCES_ALL))
+SVG_GENERATED := CodeSamples/formal/data/RCU-test-ratio.svg
+SVGSOURCES := $(filter-out $(SVG_EMERGENCY) $(SVG_GENERATED),$(SVGSOURCES_ALL)) $(SVG_GENERATED)
 FAKE_EPS_FROM_SVG := $(SVGSOURCES:%.svg=%.eps)
 PDFTARGETS_OF_SVG := $(SVGSOURCES:%.svg=%.pdf)
 
@@ -103,6 +104,8 @@ PDFTARGETS_OF_EPSOTHER := $(filter-out $(PDFTARGETS_OF_EPSORIG) $(PDFTARGETS_OF_
 BIBSOURCES := bib/*.bib alphapf.bst
 
 # required commands
+SED ?= sed
+
 LATEX_CMD := $(shell $(WHICH) $(LATEX) 2>/dev/null)
 DOT := $(shell $(WHICH) dot 2>/dev/null)
 FIG2EPS := $(shell $(WHICH) fig2eps 2>/dev/null)
@@ -111,8 +114,39 @@ INKSCAPE := $(shell $(WHICH) inkscape 2>/dev/null)
 ifdef INKSCAPE
   INKSCAPE_ONE := $(shell inkscape --version 2>/dev/null | grep -c "Inkscape 1")
 endif
+# rsvg-convert is preferred to inkscape in SVG --> PDF conversion
+RSVG_CONVERT := $(shell $(WHICH) rsvg-convert 2>/dev/null)
+ifdef RSVG_CONVERT
+  RSVG_CONVERT_VER := $(shell rsvg-convert --version | $(SED) -e 's/rsvg-convert version //')
+  RSVG_CONVERT_VER_MINOR := $(shell echo $(RSVG_CONVERT_VER) | $(SED) -E -e 's/^([0-9]+\.[0-9]+).*/\1/')
+  RSVG_CONVERT_GOOD_VER ?= 2.57
+  RSVG_CONVERT_PDFFMT_VER := 2.57
+  RSVG_CONVERT_ACCEPTABLE_VER := 2.52
+  RSVG_CONVERT_GOOD := $(shell echo $(RSVG_CONVERT_VER_MINOR) $(RSVG_CONVERT_GOOD_VER) | awk '{if ($$1 >= $$2) print 1;}')
+  RSVG_CONVERT_ACCEPTABLE := $(shell echo $(RSVG_CONVERT_VER_MINOR) $(RSVG_CONVERT_ACCEPTABLE_VER) | awk '{if ($$1 == $$2) print 1;}')
+  ifeq ($(RSVG_CONVERT_ACCEPTABLE),1)
+    RSVG_CONVERT_GOOD := 1
+  endif
+  ifndef INKSCAPE
+    RSVG_CONVERT_GOOD := 1
+  endif
+  RSVG_CONVERT_PDFFMT := $(shell echo $(RSVG_CONVERT_VER_MINOR) $(RSVG_CONVERT_PDFFMT_VER) | awk '{if ($$1 >= $$2) print 1;}')
+  ifeq ($(RSVG_CONVERT_GOOD),1)
+    SVG_PDF_CONVERTER = (rsvg-convert v$(RSVG_CONVERT_VER))
+  else
+    SVG_PDF_CONVERTER = (inkscape)
+  endif
+  ifeq ($(RSVG_CONVERT_PDFFMT),1)
+    RSVG_FMT_OPT := --format=pdf1.5
+  else
+    RSVG_FMT_OPT := --format=pdf
+  endif
+else
+  SVG_PDF_CONVERTER = (inkscape)
+endif
 LATEXPAND := $(shell $(WHICH) latexpand 2>/dev/null)
 QPDF := $(shell $(WHICH) qpdf 2>/dev/null)
+GNUPLOT := $(shell $(WHICH) gnuplot 2>/dev/null)
 
 # required fonts
 STEELFONT := $(shell fc-list | grep -c -i steel)
@@ -453,14 +487,27 @@ endif
 # bogus settings for preventing Inkscape from interacting with desktop manager
 ISOLATE_INKSCAPE ?= XDG_RUNTIME_DIR=na DBUS_SESSION_BUS_ADDRESS=na
 
+CodeSamples/formal/data/RCU-test-ratio.svg: CodeSamples/formal/data/rcu-test.dat
+CodeSamples/formal/data/RCU-test-ratio.svg: CodeSamples/formal/data/plot.sh
+CodeSamples/formal/data/RCU-test-ratio.svg:
+	@echo "Generating $@"
+ifndef GNUPLOT
+	$(error gnuplot not found. Please install it)
+endif
+	@cd CodeSamples/formal/data/ && \
+	    sh plot.sh && \
+	    cd ../../..
+
 $(PDFTARGETS_OF_SVG): $(FIXSVGFONTS)
 $(PDFTARGETS_OF_SVG): %.pdf: %.svg
-	@echo "$< --> $(suffix $@)"
+	@echo "$< --> $(suffix $@) $(SVG_PDF_CONVERTER)"
 ifeq ($(STEELFONT),0)
 	$(error "Steel City Comic" font not found. See #1 in FAQ.txt)
 endif
-ifndef INKSCAPE
-	$(error $< --> $@ inkscape not found. Please install it)
+ifneq ($(RSVG_CONVERT_GOOD),1)
+  ifndef INKSCAPE
+	$(error $< --> $@ inkscape nor rsvg-convert not found. Please install either one)
+  endif
 endif
 ifeq ($(STEELFONTID),0)
 	@sh $(FIXSVGFONTS) < $< | sed -e 's/Steel City Comic/Test/g' > $<i
@@ -483,10 +530,14 @@ ifeq ($(RECOMMEND_LIBERATIONMONO),1)
 	$(info Nice-to-have font family 'Liberation Mono' not found. See #9 in FAQ-BUILD.txt)
 endif
 
-ifeq ($(INKSCAPE_ONE),0)
-	@inkscape --export-pdf=$@ $<i > /dev/null 2>&1
+ifeq ($(RSVG_CONVERT_GOOD),1)
+	@cat $<i | rsvg-convert $(RSVG_FMT_OPT) > $@
 else
+  ifeq ($(INKSCAPE_ONE),0)
+	@inkscape --export-pdf=$@ $<i > /dev/null 2>&1
+  else
 	@$(ISOLATE_INKSCAPE) inkscape -o $@ $<i > /dev/null 2>&1
+  endif
 endif
 	@rm -f $<i
 ifeq ($(chkpagegroup),on)
@@ -603,6 +654,7 @@ clean:
 	rm -f perfbook*.sil
 	rm -f CodeSamples/snippets.d
 	rm -f *.synctex*
+	rm -f $(SVG_GENERATED)
 	@rm -f $(OBSOLETE_FILES) $(EPSSOURCES_TMP) $(SVG_EMERGENCY)
 
 paper-clean:
@@ -627,7 +679,7 @@ cleanfigs-eps:
 	rm -f $(PDFTARGETS_OF_EPS)
 
 cleanfigs-svg:
-	rm -f $(PDFTARGETS_OF_SVG) $(SVG_EMERGENCY)
+	rm -f $(PDFTARGETS_OF_SVG) $(SVG_EMERGENCY) $(SVG_GENERATED)
 
 cleanfigs: cleanfigs-eps cleanfigs-svg
 

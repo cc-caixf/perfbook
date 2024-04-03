@@ -126,7 +126,7 @@ Here are some options for handling of I/O within transactions:
 	However, special handling is required in cases where multiple
 	record-oriented output streams are merged onto a single file
 	from multiple processes, as might be done using the ``a+''
-	option to \co{fopen()} or the \co{O_APPEND}  flag to \co{open()}.
+	option to \co{fopen()} or the \co{O_APPEND} flag to \co{open()}.
 	In addition, as will be seen in the next section, common
 	networking operations cannot be handled via buffering.
 \item	Prohibit I/O within transactions, so that any attempt to execute
@@ -240,7 +240,7 @@ Here are some options available to TM:
 	back, with consequent degradation of performance and scalability.
 	This approach nevertheless might be valuable given long-running
 	transactions ending with an RPC\@.
-	This approach must still restrict  manual transaction-abort
+	This approach must still restrict manual transaction-abort
 	operations.
 \item	Identify special cases where the RPC response may be moved out
 	of the transaction, and then proceed using techniques similar
@@ -775,6 +775,8 @@ programs containing small amounts of locking, they are often completely
 unacceptable for production-quality lock-based programs wishing to use
 the occasional transaction.
 
+Here are some options available to TM:
+
 \begin{enumerate}
 \item	Use only locking-friendly TM implementations~\cite{DaveDice2006DISC}.
 	Unfortunately, the locking-unfriendly implementations have some
@@ -862,7 +864,7 @@ Here are some options available to TM:
 \item	Use TM strictly as an optimization in lock-based systems, as was
 	done by the TxLinux~\cite{ChistopherJRossbach2007a} group,
 	and as has been done by more recent work using TM to elide
-	reader writer locks~\cite{PascalFelber2016rwlockElision}.
+	reader-writer locks~\cite{PascalFelber2016rwlockElision}.
 	This approach seems sound, at least on \Power{8}
 	CPUs~\cite{Le:2015:TMS:3266491.3266500}, but leaves the locking
 	design constraints (such as the need to avoid deadlock) firmly

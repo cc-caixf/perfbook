@@ -118,23 +118,23 @@ that the compiler is correct.
 An alternative approach is to take the binary produced by the C compiler
 as input, thereby accounting for any relevant compiler bugs.
 This approach has been used in a number of verification efforts,
-perhaps most notably by the SEL4
+perhaps most notably by the seL4
 project~\cite{ThomasSewell2013L4binaryVerification}.
 
 \QuickQuiz{
 	Given the groundbreaking nature of the various verifiers used
-	in the SEL4 project, why doesn't this chapter cover them in
+	in the seL4 project, why doesn't this chapter cover them in
 	more depth?
 }\QuickQuizAnswer{
-	There can be no doubt that the verifiers used by the SEL4
+	There can be no doubt that the verifiers used by the seL4
 	project are quite capable.
-	However, SEL4 started as a single-CPU project.
-	And although SEL4 has gained multi-processor
+	However, seL4 started as a single-CPU project.
+	And although seL4 has gained multi-processor
 	capabilities, it is currently using very coarse-grained
 	locking that is similar to the Linux kernel's old
 	Big Kernel Lock (BKL)\@.
 	There will hopefully come a day when it makes sense to add
-	SEL4's verifiers to a book on parallel programming, but
+	seL4's verifiers to a book on parallel programming, but
 	this is not yet that day.
 }\QuickQuizEnd
 
@@ -155,7 +155,7 @@ testing, which is in fact the topic of this section.
 It is critically important that formal-verification tools correctly
 model their environment.
 One all-too-common omission is the memory model, where a great
-many formal-verification tools, including Promela/spin, are
+many formal-verification tools, including Promela/\co{spin}, are
 restricted to \IXh{sequential}{consistency}.
 The QRCU experience related in
 \cref{sec:formal:Is QRCU Really Correct?}
@@ -359,7 +359,7 @@ What is needed is a tool that gives at least \emph{some} information
 as to where the bug is located and the nature of that bug.
 
 The \co{cbmc} output includes a traceback mapping back to the source
-code, similar to Promela/spin's, as does Nidhugg.
+code, similar to Promela/\co{spin}'s, as does Nidhugg.
 Of course, these tracebacks can be quite long, and analyzing them
 can be quite tedious.
 However, doing so is usually quite a bit faster
